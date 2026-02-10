@@ -1,47 +1,62 @@
-/*
-  CommandFactory Command 명령어 구성.
-*/
-
 {
   "connect": {
-    "params": [
-      "id","pw"
-    ]
+    "prefix": "CONN",
+    "params": ["id", "pw"],
+    "payloadRequired": false,
+    "payloadOptional": false
   },
-
   "disconnect": {
-
+    "prefix": "DISC",
+    "params": [],
+    "payloadRequired": false,
+    "payloadOptional": false
   },
-
   "SYN": {
-
+    "prefix": "SYN",
+    "params": ["sessionId"],
+    "payloadRequired": false,
+    "payloadOptional": true
   },
-
   "ACK": {
-
+    "prefix": "ACK",
+    "params": ["sessionId"],
+    "payloadRequired": false,
+    "payloadOptional": true
   },
-
   "get": {
-
+    "prefix": "GET",
+    "params": ["resource"],
+    "payloadRequired": false,
+    "payloadOptional": true
   },
-
   "set": {
-
+    "prefix": "SET",
+    "params": ["resource"],
+    "payloadRequired": true,
+    "payloadOptional": true
   },
-
   "remove": {
-
+    "prefix": "DEL",
+    "params": ["resource"],
+    "payloadRequired": false,
+    "payloadOptional": true
   },
-
   "click": {
-
+    "prefix": "INPUT",
+    "params": ["targetId"],
+    "payloadRequired": false,
+    "payloadOptional": true
   },
-
   "request": {
-
+    "prefix": "REQ",
+    "params": ["route"],
+    "payloadRequired": false,
+    "payloadOptional": true
   },
-
   "received": {
-
+    "prefix": "RES",
+    "params": ["route", "status"],
+    "payloadRequired": false,
+    "payloadOptional": true
   }
 }

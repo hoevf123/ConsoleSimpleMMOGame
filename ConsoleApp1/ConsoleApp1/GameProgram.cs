@@ -1,137 +1,204 @@
-﻿using System;
+﻿using ConsoleApp1.Spaces;
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ConsoleApp1
 {
     internal class GameProgram
     {
-        List<BaseObject> gameObjects = new List<BaseObject>();
+        private readonly GameObjectRepository gameObjectRepository;
+        private readonly VirtualSpaceService virtualSpaceService;
+        private readonly CommandDispatcher commandDispatcher;
+        private readonly Random random = new Random();
+
         public GameProgram()
         {
-            
+            gameObjectRepository = new GameObjectRepository();
+            virtualSpaceService = new VirtualSpaceService();
+            commandDispatcher = new CommandDispatcher();
+
+            RegisterCommands();
         }
 
-        //임시. 이 기능은 단일 책임 원칙(Single Responsiblility Principle) 준수를 위해 역할 분리를 위해 나중에 Dispatcher로 따로 분리할 예정인 기능.
+        private void RegisterCommands()
+        {
+            commandDispatcher.RegisterExact("스피키", () => gameObjectRepository.Add(new TerrainObject("스피키 지형 블록")));
+            commandDispatcher.RegisterExact("스핔이", () => gameObjectRepository.Add(new TerrainObject("호박이 좋아요 블록")));
+            commandDispatcher.RegisterExact("버터", () => gameObjectRepository.Add(new TerrainObject("좋아요 좋아요 버터가 좋아요~ 블록")));
+            commandDispatcher.RegisterExact("개체 개수 표시", () => Console.WriteLine($"현재 개체 개수: {gameObjectRepository.Count}개"));
+
+            commandDispatcher.RegisterExact("한정현", CreateRandomTerrainObject);
+            commandDispatcher.RegisterAlias("한정현", "대뾴니", "대뾰니");
+
+            commandDispatcher.RegisterPrefix("찾기", FindGameObjectsCommand);
+            commandDispatcher.RegisterExact("모두찾기", FindAllGameObjectsCommand);
+            commandDispatcher.RegisterExact("주말농장", ClearAllCommand);
+            commandDispatcher.RegisterPrefix("/hostalarm", (paramString) => Console.WriteLine($"★☆★ {paramString} ★☆★"));
+
+            commandDispatcher.RegisterPrefix("공간생성", CreateVirtualSpaceCommand);
+            commandDispatcher.RegisterPrefix("공간삭제", DeleteVirtualSpaceCommand);
+            commandDispatcher.RegisterPrefix("공간에넣기", LinkObjectToVirtualSpaceCommand);
+            commandDispatcher.RegisterExact("공간목록", PrintVirtualSpaceList);
+            commandDispatcher.RegisterPrefix("공간조회", PrintVirtualSpaceDetailCommand);
+
+            // 이전 월드 명령어 호환
+            commandDispatcher.RegisterPrefix("세계생성", CreateVirtualSpaceCommand);
+            commandDispatcher.RegisterPrefix("세계삭제", DeleteVirtualSpaceCommand);
+            commandDispatcher.RegisterPrefix("세계에넣기", LinkObjectToVirtualSpaceCommand);
+            commandDispatcher.RegisterExact("세계목록", PrintVirtualSpaceList);
+            commandDispatcher.RegisterPrefix("세계조회", PrintVirtualSpaceDetailCommand);
+        }
+
+        private void CreateRandomTerrainObject()
+        {
+            string[] randomTerrainNames =
+            {
+                "IBK기업은행 대출 10억",
+                "체중 118kg",
+                "대뾰니",
+                "에르핀"
+            };
+
+            int choose = random.Next(randomTerrainNames.Length);
+            gameObjectRepository.Add(new TerrainObject(randomTerrainNames[choose]));
+        }
+
+        private void ClearAllCommand()
+        {
+            gameObjectRepository.Clear();
+            virtualSpaceService.ClearAllLinks();
+            Console.WriteLine("남아있던 네르들을 전부 주말농장 보내버렸습니다.");
+        }
+
+        private void CreateVirtualSpaceCommand(string paramString)
+        {
+            string spaceName = paramString.Trim();
+            if (string.IsNullOrWhiteSpace(spaceName))
+            {
+                Console.WriteLine("사용법: 공간생성 [공간이름]");
+                return;
+            }
+
+            if (!virtualSpaceService.Create(spaceName))
+            {
+                Console.WriteLine($"이미 존재하는 공간이거나 이름이 잘못되었습니다: {spaceName}");
+                return;
+            }
+
+            Console.WriteLine($"공간 생성 완료: {spaceName}");
+        }
+
+        private void DeleteVirtualSpaceCommand(string paramString)
+        {
+            string spaceName = paramString.Trim();
+            if (string.IsNullOrWhiteSpace(spaceName))
+            {
+                Console.WriteLine("사용법: 공간삭제 [공간이름]");
+                return;
+            }
+
+            if (!virtualSpaceService.Delete(spaceName))
+            {
+                Console.WriteLine($"삭제할 공간이 없습니다: {spaceName}");
+                return;
+            }
+
+            Console.WriteLine($"공간 삭제 완료: {spaceName}");
+        }
+
+        private void LinkObjectToVirtualSpaceCommand(string paramString)
+        {
+            string[] tokens = paramString.Split(new[] { ' ' }, 2, StringSplitOptions.RemoveEmptyEntries);
+            if (tokens.Length < 2)
+            {
+                Console.WriteLine("사용법: 공간에넣기 [공간명] [오브젝트명]");
+                return;
+            }
+
+            string spaceName = tokens[0];
+            string objectName = tokens[1].Trim();
+
+            VirtualSpace virtualSpace;
+            if (!virtualSpaceService.TryGet(spaceName, out virtualSpace))
+            {
+                Console.WriteLine($"대상 공간이 없습니다: {spaceName}");
+                return;
+            }
+
+            List<BaseObject> matchedObjects = gameObjectRepository.FindAllByName(objectName);
+            if (matchedObjects.Count == 0)
+            {
+                Console.WriteLine($"전역 개체 목록에 \"{objectName}\" 이름의 오브젝트가 없습니다.");
+                return;
+            }
+
+            int linkedCount = virtualSpace.LinkObjects(matchedObjects);
+            Console.WriteLine($"공간 [{spaceName}]에 [{objectName}] 오브젝트 {linkedCount}개를 연결했습니다. (중복 제외)");
+        }
+
+        private void PrintVirtualSpaceList()
+        {
+            Console.WriteLine($"공간 목록: 총 {virtualSpaceService.Spaces.Count}개");
+            foreach (KeyValuePair<string, VirtualSpace> pair in virtualSpaceService.Spaces)
+            {
+                Console.WriteLine($"- {pair.Key} (연결된 오브젝트 {pair.Value.LinkedObjects.Count}개)");
+            }
+        }
+
+        private void PrintVirtualSpaceDetailCommand(string paramString)
+        {
+            string spaceName = paramString.Trim();
+            if (string.IsNullOrWhiteSpace(spaceName))
+            {
+                Console.WriteLine("사용법: 공간조회 [공간이름]");
+                return;
+            }
+
+            VirtualSpace targetSpace;
+            if (!virtualSpaceService.TryGet(spaceName, out targetSpace))
+            {
+                Console.WriteLine($"조회할 공간이 없습니다: {spaceName}");
+                return;
+            }
+
+            Console.WriteLine($"공간 [{spaceName}] 오브젝트: 총 {targetSpace.LinkedObjects.Count}개");
+            Dictionary<string, int> byName = targetSpace.CountByObjectName();
+            foreach (KeyValuePair<string, int> pair in byName)
+            {
+                Console.WriteLine($"[{pair.Key}] {pair.Value}개");
+            }
+        }
+
         public void AssertCommand(string command)
         {
             Console.WriteLine(command);
-
-            //정확히 입력해야만 발동하는 명령어 처리.
-            Dictionary<string, Action> commandExecutesAccurate = new Dictionary<string, Action>();
-            commandExecutesAccurate.Add("스피키", new Action(() =>
-            {
-                gameObjects.Add(new TerrainObject("스피키 지형 블록"));
-            }));
-            commandExecutesAccurate.Add("스핔이", new Action(() =>
-            {
-                gameObjects.Add(new TerrainObject("호박이 좋아요 블록"));
-            }));
-            commandExecutesAccurate.Add("버터", new Action(() =>
-            {
-                gameObjects.Add(new TerrainObject("좋아요 좋아요 버터가 좋아요~ 블록"));
-            }));
-            commandExecutesAccurate.Add("개체 개수 표시", new Action(() =>
-            {
-                Console.WriteLine($"현재 개체 개수: {gameObjects.Count}개");
-
-            }));
-
-            commandExecutesAccurate.Add("한정현", new Action(() =>
-            {
-                Random random = new Random();
-                int choose = random.Next(4);
-                switch (choose)
-                {
-                    case 0:
-                        gameObjects.Add(new TerrainObject("IBK기업은행 대출 10억"));
-                        break;
-                    case 1:
-                        gameObjects.Add(new TerrainObject("체중 118kg"));
-                        break;
-                    case 2:
-                        gameObjects.Add(new TerrainObject("대뾰니"));
-                        break;
-                    case 3:
-                        gameObjects.Add(new TerrainObject("에르핀"));
-                        break;
-                    default:
-                        break;
-
-                }
-            }));
-
-            commandExecutesAccurate.Add("대뾴니", commandExecutesAccurate["한정현"]);
-            commandExecutesAccurate.Add("대뾰니", commandExecutesAccurate["한정현"]);
-
-
-            //명령어로 시작하여 뒤쪽인수를 받는 명령어 처리.
-            Dictionary<string, Action<string>> commandExecutesStartsWith = new Dictionary<string, Action<string>>();
-            commandExecutesStartsWith.Add("찾기", new Action<string>((paramString) =>
-            {
-                findGameObjects(paramString);
-            }));
-
-            commandExecutesAccurate.Add("모두찾기", new Action(() =>
-            {
-                findAllGameObjects();
-            }));
-
-            commandExecutesAccurate.Add("주말농장", new Action(() =>
-            {
-                gameObjects.Clear();
-                Console.WriteLine("남아있던 네르들을 전부 주말농장 보내버렸습니다.");
-            }));
-
-            commandExecutesStartsWith.Add("/hostalarm", new Action<string>((paramString) =>
-            {
-                Console.WriteLine($"★☆★ {paramString} ★☆★");
-            }));
-
-
-
-            //명렁어 처리
-            //1. 정확한 입력을 처리하는 명령어 처리.
-            if (commandExecutesAccurate.ContainsKey(command))
-            {
-                commandExecutesAccurate[command].Invoke();
-            }
-            //2. 명령어로 시작하는 명령어 처리.
-            else if(commandExecutesStartsWith.ContainsKey(command.Trim().Split(' ')[0]))
-            {
-                string keyString = command.Trim().Split(' ')[0];
-                string paramString = command.Substring(keyString.Length).TrimStart();
-                commandExecutesStartsWith[keyString].Invoke(paramString);
-            }
-            //명령어를 처리하지 않는 건 따로 처리를 하지 않는다.
-            //(물론, 1, 2를 거치기 전에 콘솔 명령어로 무엇을 입력했는지 상단에 Console.WriteLine(command);을 적어두긴 했지만 말이다.
-            
+            commandDispatcher.Dispatch(command);
         }
 
         public int findGameObjects(string name)
         {
-            int ret_val = 0;
-            ret_val = gameObjects.Aggregate(0, (a, c) => a = a + (c.name.Equals(name) ? 1 : 0));
-            Console.WriteLine($"대상 \"{name}\"은/는 {ret_val}개 있습니다.");
-            return ret_val;
+            int result = gameObjectRepository.FindCountByName(name);
+            Console.WriteLine($"대상 \"{name}\"은/는 {result}개 있습니다.");
+            return result;
         }
+
         public void findAllGameObjects()
         {
-            Dictionary<string, List<BaseObject>> allObjectsByName = gameObjects.Aggregate(new Dictionary<string, List<BaseObject>>(), (a, c) =>
+            FindAllGameObjectsCommand();
+        }
+
+        private void FindGameObjectsCommand(string name)
+        {
+            findGameObjects(name);
+        }
+
+        private void FindAllGameObjectsCommand()
+        {
+            Dictionary<string, int> allObjectsByName = gameObjectRepository.GroupCountByName();
+            Console.WriteLine($"개체 목록: 총 {gameObjectRepository.Count}개");
+            foreach (KeyValuePair<string, int> pair in allObjectsByName)
             {
-                if (c == null) return a;
-                string name = c.name;
-                if(!a.ContainsKey(name)) a[name] = new List<BaseObject>();
-                a[name].Add(c);
-                return a;
-            });
-            Console.WriteLine($"개체 목록: 총 {gameObjects.Count}개");
-            foreach(string argname in allObjectsByName.Keys)
-            {
-                Console.WriteLine($"[{argname}]: {allObjectsByName[argname].Count}개");
+                Console.WriteLine($"[{pair.Key}]: {pair.Value}개");
             }
         }
     }
