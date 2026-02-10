@@ -1,0 +1,47 @@
+/*
+  CommandFactory Command 명령어 구성.
+*/
+
+{
+  "connect": {
+    "params": [
+      "id","pw"
+    ]
+  },
+
+  "disconnect": {
+
+  },
+
+  "SYN": {
+
+  },
+
+  "ACK": {
+
+  },
+
+  "get": {
+
+  },
+
+  "set": {
+
+  },
+
+  "remove": {
+
+  },
+
+  "click": {
+
+  },
+
+  "request": {
+
+  },
+
+  "received": {
+
+  }
+}
