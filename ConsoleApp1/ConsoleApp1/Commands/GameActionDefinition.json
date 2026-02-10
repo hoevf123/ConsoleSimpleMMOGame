@@ -1,0 +1,50 @@
+{
+  "terrain.create": {
+    "category": "world",
+    "prefix": "ACT_TERRAIN_CREATE",
+    "params": ["worldId", "terrainType", "x", "y", "z"],
+    "payloadRequired": false,
+    "payloadOptional": true,
+    "description": "지형지물을 지정 월드 좌표에 생성한다. payload는 옵션(JSON 속성 확장)"
+  },
+  "character.move": {
+    "category": "character",
+    "prefix": "ACT_CHARACTER_MOVE",
+    "params": ["characterId", "x", "y", "z"],
+    "payloadRequired": false,
+    "payloadOptional": true,
+    "description": "캐릭터를 목표 좌표로 이동시킨다. payload에 이동 방식(run/walk/teleport) 지정 가능"
+  },
+  "ui.open": {
+    "category": "ui",
+    "prefix": "ACT_UI_OPEN",
+    "params": ["userId", "uiId"],
+    "payloadRequired": false,
+    "payloadOptional": true,
+    "description": "특정 사용자에게 UI 창을 연다. payload에 탭/초기 데이터 전달 가능"
+  },
+  "input.button.click": {
+    "category": "input",
+    "prefix": "ACT_BUTTON_CLICK",
+    "params": ["userId", "buttonId"],
+    "payloadRequired": false,
+    "payloadOptional": true,
+    "description": "버튼 클릭 이벤트를 서버에 전달한다. payload에 context 정보 전달 가능"
+  },
+  "world.object.spawn": {
+    "category": "world",
+    "prefix": "ACT_OBJECT_SPAWN",
+    "params": ["worldId", "objectPoolKey", "instanceId"],
+    "payloadRequired": true,
+    "payloadOptional": true,
+    "description": "오브젝트 풀 키 기준으로 인스턴스를 활성화(spawn)한다. payload에 transform/상태 필드 전달"
+  },
+  "world.object.despawn": {
+    "category": "world",
+    "prefix": "ACT_OBJECT_DESPAWN",
+    "params": ["worldId", "instanceId"],
+    "payloadRequired": false,
+    "payloadOptional": true,
+    "description": "월드 내 인스턴스를 비활성화(despawn)하고 풀로 반환한다"
+  }
+}
